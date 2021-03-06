@@ -23,8 +23,9 @@ restart_zimbra() (
         return 5
     }
 )
-#EDIT YOUR DOMAIN HERE
+#EDIT YOUR DOMAIN AND CERTBOT LOCATION HERE
 domain="mail.example.com"
+certbot=/mnt/certbot/letsencrypt-auto
 
 #NUMBER OF DAY REMAIN TO RENEW SSL
 DAYS=30
@@ -36,7 +37,20 @@ zimbra_cert=/opt/zimbra/ssl/zimbra/commercial/commercial.crt
 letsencrypt_cert=/etc/letsencrypt/live/$domain/cert.pem
 hash_orig=`sha1sum $letsencrypt_cert | awk '{print $1}'`
 
+yum install git -y
+if [[ $domain == "mail.example.com" ]];
+then
+	echo "You're not define your mail server domain, exiting..."
+	exit 1
+fi	
 
+if [[ -d "/mnt/certbot/" ]];
+then
+	cp -R /mnt/certbot/ /mnt/certbot.bak/
+	rm -rf /mnt/certbot
+fi
+
+git clone https://github.com/certbot/certbot.git /mnt
 
 if openssl x509 -checkend $(( DAYS*24*60*60 )) -in "$zimbra_cert" &> /dev/null; then
 	information "Certificate will be valid for next $DAYS days, exiting..."
@@ -45,7 +59,7 @@ if openssl x509 -checkend $(( DAYS*24*60*60 )) -in "$zimbra_cert" &> /dev/null; 
 else
 	information "Certificate will expire in $DAYS, certificate will be renewed."
 	echo "Certificate will expire in $DAYS, certificate will be renewed."
-	/mnt/certbot/letsencrypt-auto renew 
+	$certbot renew 
 fi
 
 hash_curr=`sha1sum $letsencrypt_cert | awk '{print $1}'`
